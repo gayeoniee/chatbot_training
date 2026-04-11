@@ -75,7 +75,7 @@ def kakao():
                         photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
                         for i, photo_url in enumerate(photo_urls[:5]):
                             detail_items.append({
-                                "title": " ",
+                                "title": f"📸 세부사진 {i+1}",
                                 "thumbnail": {"imageUrl": photo_url}
                             })
 
@@ -84,7 +84,7 @@ def kakao():
                         plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                         for i, plan_url in enumerate(plan_urls[:3]):
                             detail_items.append({
-                                "title": " ",
+                                "title": f"📐 도면 {i+1}",
                                 "thumbnail": {"imageUrl": plan_url}
                             })
                     detail_items = detail_items[:10]
