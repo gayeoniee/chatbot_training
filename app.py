@@ -40,25 +40,66 @@ def kakao():
                 row = next((r for r in rows if r[0] == building_id), None)
 
                 if row:
-                    text = f"🏢 {row[1]}\n"
-                    text += "─────────────────\n"
-                    text += f"📍 주소: {row[2]}\n"
-                    text += f"🗓 준공: {row[3]}\n"
-                    text += f"🏗 규모: {row[4]}\n"
-                    text += f"📐 연면적: {row[5]}\n"
-                    text += f"📏 기준층 임대면적: {row[6]}\n"
-                    text += f"📏 기준층 전용면적: {row[7]}\n"
-                    text += f"💯 전용률: {row[8]}\n"
-                    text += f"🚗 총주차: {row[10]}\n"
-                    text += f"❄️ 냉난방: {row[16]}\n"
-                    text += f"ℹ️ 기타: {row[17]}\n"
-                    text += "─────────────────\n"
-                    text += "💬 '종료'를 입력하면 챗봇을 종료합니다."
+                    # 기본 정보 카드
+                    items = [{
+                        "title": row[1],
+                        "description": (
+                            f"📍 {row[2]}\n"
+                            f"🗓 준공: {row[3]}\n"
+                            f"🏗 규모: {row[4]}\n"
+                            f"📐 연면적: {row[5]}\n"
+                            f"📏 임대면적: {row[6]}\n"
+                            f"💯 전용률: {row[8]}\n"
+                            f"🚗 주차: {row[10]}\n"
+                            f"❄️ 냉난방: {row[16]}"
+                        ),
+                        "thumbnail": {
+                            "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
+                        },
+                        "buttons": [
+                            {
+                                "action": "block",
+                                "label": "📊 공실 현황",
+                                "blockId": BLOCK_공실현황,
+                                "extra": {"building_id": building_id}
+                            },
+                            {
+                                "action": "block",
+                                "label": "📞 상담 연결",
+                                "blockId": BLOCK_상담연결
+                            }
+                        ]
+                    }]
+
+                    # 세부사진 카드들 (row[19])
+                    if row[19]:
+                        photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
+                        for i, photo_url in enumerate(photo_urls[:5]):  # 최대 5장
+                            items.append({
+                                "title": f"📸 세부사진 {i+1}",
+                                "description": row[1],
+                                "thumbnail": {"imageUrl": photo_url},
+                                "buttons": []
+                            })
+
+                    # 도면 카드들 (row[20])
+                    if row[20]:
+                        plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
+                        for i, plan_url in enumerate(plan_urls[:3]):  # 최대 3장
+                            items.append({
+                                "title": f"📐 도면 {i+1}",
+                                "description": row[1],
+                                "thumbnail": {"imageUrl": plan_url},
+                                "buttons": []
+                            })
+
+                    # 카로셀 최대 10개 제한
+                    items = items[:10]
 
                     return jsonify({
                         "version": "2.0",
                         "template": {
-                            "outputs": [{"simpleText": {"text": text}}],
+                            "outputs": [{"carousel": {"type": "basicCard", "items": items}}],
                             "quickReplies": [
                                 {
                                     "action": "block",
@@ -79,46 +120,6 @@ def kakao():
                             ]
                         }
                     })
-
-            # 빌딩 목록 모드 (기본)
-            rows = get_sheet_data("건물 마스터")
-            rows = rows[1:]
-
-            items = []
-            for row in rows[:10]:
-                if len(row) < 22:
-                    continue
-                items.append({
-                    "title": row[1],
-                    "description": f"📍 {row[2]}\n🏗 {row[4]}\n🚗 주차 {row[10]}",
-                    "thumbnail": {
-                        "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
-                    },
-                    "buttons": [
-                        {
-                            "action": "block",
-                            "label": "📋 상세보기",
-                            "blockId": BLOCK_빌딩목록,
-                            "extra": {"mode": "detail", "building_id": row[0]}
-                        },
-                        {
-                            "action": "block",
-                            "label": "📊 공실 현황",
-                            "blockId": BLOCK_공실현황,
-                            "extra": {"building_id": row[0]}
-                        },
-                        {
-                            "action": "webLink",
-                            "label": "📍 위치 확인",
-                            "webLinkUrl": row[21] if row[21] else "https://map.kakao.com"
-                        },
-                        {
-                            "action": "block",
-                            "label": "📞 상담 연결",
-                            "blockId": BLOCK_상담연결
-                        }
-                    ]
-                })
 
             return jsonify({
                 "version": "2.0",
