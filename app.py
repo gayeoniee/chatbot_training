@@ -87,6 +87,7 @@ def kakao():
                                 "title": f"📐 도면 {i+1}",
                                 "thumbnail": {"imageUrl": plan_url}
                             })
+
                     detail_items = detail_items[:10]
 
                     return jsonify({
@@ -114,12 +115,19 @@ def kakao():
                         }
                     })
 
-            # 빌딩 목록 모드 (기본)
+            # 빌딩 목록 모드 (페이지네이션)
             rows = get_sheet_data("건물 마스터")
             rows = rows[1:]
 
+            page = int(client_extra.get("page", 1))
+            page_size = 10
+            start = (page - 1) * page_size
+            end = start + page_size
+            total = len(rows)
+            paged_rows = rows[start:end]
+
             list_items = []
-            for row in rows[:10]:
+            for row in paged_rows:
                 if len(row) < 22:
                     continue
                 list_items.append({
@@ -154,12 +162,32 @@ def kakao():
                     ]
                 })
 
-            return jsonify({
+            quick_replies = []
+            if page > 1:
+                quick_replies.append({
+                    "action": "block",
+                    "label": "◀ 이전 페이지",
+                    "blockId": BLOCK_빌딩목록,
+                    "extra": {"page": page - 1}
+                })
+            if end < total:
+                quick_replies.append({
+                    "action": "block",
+                    "label": "다음 페이지 ▶",
+                    "blockId": BLOCK_빌딩목록,
+                    "extra": {"page": page + 1}
+                })
+
+            response = {
                 "version": "2.0",
                 "template": {
                     "outputs": [{"carousel": {"type": "basicCard", "items": list_items}}]
                 }
-            })
+            }
+            if quick_replies:
+                response["template"]["quickReplies"] = quick_replies
+
+            return jsonify(response)
 
         # ─── 공실_현황 ───
         if block_id == BLOCK_공실현황:
