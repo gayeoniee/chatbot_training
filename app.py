@@ -22,6 +22,12 @@ def get_sheet_data(sheet_name):
         rows = list(reader)
         return rows
 
+@app.route("/", methods=["GET", "POST"])
+def kakao():
+    # GET 요청이면 그냥 200 응답
+    if request.method == "GET":
+        return "OK", 200
+
 @app.route("/", methods=["POST"])
 def kakao():
     try:
