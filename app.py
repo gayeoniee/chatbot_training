@@ -77,15 +77,7 @@ def kakao():
                             detail_items.append({
                                 "title": f"📸 세부사진 {i+1}",
                                 "description": row[1],
-                                "thumbnail": {"imageUrl": photo_url},
-                                "buttons": [
-                                    {
-                                        "action": "block",
-                                        "label": "📊 공실 현황",
-                                        "blockId": BLOCK_공실현황,
-                                        "extra": {"building_id": building_id}
-                                    }
-                                ]
+                                "thumbnail": {"imageUrl": photo_url}
                             })
 
                     # 도면 (row[20])
@@ -95,14 +87,7 @@ def kakao():
                             detail_items.append({
                                 "title": f"📐 도면 {i+1}",
                                 "description": row[1],
-                                "thumbnail": {"imageUrl": plan_url},
-                                "buttons": [
-                                    {
-                                        "action": "block",
-                                        "label": "📞 상담 연결",
-                                        "blockId": BLOCK_상담연결
-                                    }
-                                ]
+                                "thumbnail": {"imageUrl": plan_url}
                             })
 
                     detail_items = detail_items[:10]
