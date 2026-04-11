@@ -40,25 +40,35 @@ def kakao():
                 row = next((r for r in rows if r[0] == building_id), None)
 
                 if row:
-                    # 텍스트 정보
-                    detail_text = (
-                        f"🏢 {row[1]}\n"
-                        f"─────────────────\n"
-                        f"📍 주소: {row[2]}\n"
-                        f"🗓 준공: {row[3]}\n"
-                        f"🏗 규모: {row[4]}\n"
-                        f"📐 연면적: {row[5]}\n"
-                        f"📏 임대면적: {row[6]}\n"
-                        f"💯 전용률: {row[8]}\n"
-                        f"🚗 주차: {row[10]}\n"
-                        f"❄️ 냉난방: {row[16]}\n"
-                        f"─────────────────\n"
-                        f"💬 '종료'를 입력하면 챗봇을 종료합니다."
-                    )
-
-                    # 사진 캐러셀
-                    detail_items = []
-
+                    detail_items = [{
+                        "title": row[1],
+                        "description": (
+                            f"📍 {row[2]}\n"
+                            f"🗓 준공: {row[3]}\n"
+                            f"🏗 규모: {row[4]}\n"
+                            f"📐 연면적: {row[5]}\n"
+                            f"📏 임대면적: {row[6]}\n"
+                            f"💯 전용률: {row[8]}\n"
+                            f"🚗 주차: {row[10]}\n"
+                            f"❄️ 냉난방: {row[16]}"
+                        ),
+                        "thumbnail": {
+                            "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
+                        },
+                        "buttons": [
+                            {
+                                "action": "block",
+                                "label": "📊 공실 현황",
+                                "blockId": BLOCK_공실현황,
+                                "extra": {"building_id": building_id}
+                            },
+                            {
+                                "action": "block",
+                                "label": "📞 상담 연결",
+                                "blockId": BLOCK_상담연결
+                            }
+                        ]
+                    }]
                     # 세부사진 (row[19])
                     if row[19]:
                         photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
@@ -80,9 +90,7 @@ def kakao():
                     detail_items = detail_items[:10]
 
                     # outputs 구성 (사진 있을 때만 캐러셀 추가)
-                    outputs = [{"simpleText": {"text": detail_text}}]
-                    if detail_items:
-                        outputs.append({"carousel": {"type": "basicCard", "items": detail_items}})
+                    outputs = [{"carousel": {"type": "basicCard", "items": detail_items}}]
 
                     return jsonify({
                         "version": "2.0",
