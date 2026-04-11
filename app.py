@@ -40,8 +40,7 @@ def kakao():
                 row = next((r for r in rows if r[0] == building_id), None)
 
                 if row:
-                    # 기본 정보 카드
-                    items = [{
+                    detail_items = [{
                         "title": row[1],
                         "description": (
                             f"📍 {row[2]}\n"
@@ -71,35 +70,47 @@ def kakao():
                         ]
                     }]
 
-                    # 세부사진 카드들 (row[19])
+                    # 세부사진 (row[19])
                     if row[19]:
                         photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
-                        for i, photo_url in enumerate(photo_urls[:5]):  # 최대 5장
-                            items.append({
+                        for i, photo_url in enumerate(photo_urls[:5]):
+                            detail_items.append({
                                 "title": f"📸 세부사진 {i+1}",
                                 "description": row[1],
                                 "thumbnail": {"imageUrl": photo_url},
-                                "buttons": []
+                                "buttons": [
+                                    {
+                                        "action": "block",
+                                        "label": "📊 공실 현황",
+                                        "blockId": BLOCK_공실현황,
+                                        "extra": {"building_id": building_id}
+                                    }
+                                ]
                             })
 
-                    # 도면 카드들 (row[20])
+                    # 도면 (row[20])
                     if row[20]:
                         plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
-                        for i, plan_url in enumerate(plan_urls[:3]):  # 최대 3장
-                            items.append({
+                        for i, plan_url in enumerate(plan_urls[:3]):
+                            detail_items.append({
                                 "title": f"📐 도면 {i+1}",
                                 "description": row[1],
                                 "thumbnail": {"imageUrl": plan_url},
-                                "buttons": []
+                                "buttons": [
+                                    {
+                                        "action": "block",
+                                        "label": "📞 상담 연결",
+                                        "blockId": BLOCK_상담연결
+                                    }
+                                ]
                             })
 
-                    # 카로셀 최대 10개 제한
-                    items = items[:10]
+                    detail_items = detail_items[:10]
 
                     return jsonify({
                         "version": "2.0",
                         "template": {
-                            "outputs": [{"carousel": {"type": "basicCard", "items": items}}],
+                            "outputs": [{"carousel": {"type": "basicCard", "items": detail_items}}],
                             "quickReplies": [
                                 {
                                     "action": "block",
@@ -121,10 +132,50 @@ def kakao():
                         }
                     })
 
+            # 빌딩 목록 모드 (기본)
+            rows = get_sheet_data("건물 마스터")
+            rows = rows[1:]
+
+            list_items = []
+            for row in rows[:10]:
+                if len(row) < 22:
+                    continue
+                list_items.append({
+                    "title": row[1],
+                    "description": f"📍 {row[2]}\n🏗 {row[4]}\n🚗 주차 {row[10]}",
+                    "thumbnail": {
+                        "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
+                    },
+                    "buttons": [
+                        {
+                            "action": "block",
+                            "label": "📋 상세보기",
+                            "blockId": BLOCK_빌딩목록,
+                            "extra": {"mode": "detail", "building_id": row[0]}
+                        },
+                        {
+                            "action": "block",
+                            "label": "📊 공실 현황",
+                            "blockId": BLOCK_공실현황,
+                            "extra": {"building_id": row[0]}
+                        },
+                        {
+                            "action": "webLink",
+                            "label": "📍 위치 확인",
+                            "webLinkUrl": row[21] if row[21] else "https://map.kakao.com"
+                        },
+                        {
+                            "action": "block",
+                            "label": "📞 상담 연결",
+                            "blockId": BLOCK_상담연결
+                        }
+                    ]
+                })
+
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"carousel": {"type": "basicCard", "items": items}}]
+                    "outputs": [{"carousel": {"type": "basicCard", "items": list_items}}]
                 }
             })
 
