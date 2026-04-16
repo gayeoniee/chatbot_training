@@ -206,21 +206,15 @@ def kakao():
         # ─── 공실_현황 ───
         if block_id == BLOCK_공실현황:
             rows = get_sheet_data("공실 현황")
-            rows = rows[1:]
-            filtered = [r for r in rows if r[0] == building_id]
-
+            # 헤더 제거 전 원본 확인
             return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": 
-                            f"filtered 개수: {len(filtered)}\n"
-                            f"filtered[0]: {str(filtered[0])}\n"
-                            f"filtered[0][1]: '{filtered[0][1]}'\n"
-                            f"repr: {repr(filtered[0][1])}"
-                        }}]
-                    }
-                })
-
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"simpleText": {"text": 
+                        "\n".join([str(r[:3]) for r in rows[:12]])
+                    }}]
+                }
+            })
             if not filtered:
                 return jsonify({
                     "version": "2.0",
