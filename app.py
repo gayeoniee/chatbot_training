@@ -154,7 +154,6 @@ def kakao():
 
             # 사진 캐러셀 구성
             photo_items = []
-
             if row[19]:
                 photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
                 for i, photo_url in enumerate(photo_urls[:5]):
@@ -162,7 +161,6 @@ def kakao():
                         "title": f"📸 세부사진 {i+1}",
                         "thumbnail": {"imageUrl": photo_url}
                     })
-
             if row[20]:
                 plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                 for i, plan_url in enumerate(plan_urls[:3]):
@@ -170,29 +168,23 @@ def kakao():
                         "title": f"📐 도면",
                         "thumbnail": {"imageUrl": plan_url}
                     })
-
             photo_items = photo_items[:10]
 
-            # outputs 구성: 텍스트 먼저, 사진 있으면 캐러셀 추가
+            # outputs: 텍스트 + 사진 캐러셀(있을 때) + 버튼 카드
             outputs = [{"simpleText": {"text": detail_text}}]
             if photo_items:
                 outputs.append({"carousel": {"type": "basicCard", "items": photo_items}})
 
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": outputs,
-                    "quickReplies": [
+            # 버튼 카드 (building_id extra 전달용)
+            outputs.append({
+                "basicCard": {
+                    "title": "🔍 추가 정보",
+                    "buttons": [
                         {
                             "action": "block",
                             "label": "📊 공실 현황",
                             "blockId": BLOCK_공실현황,
                             "extra": {"building_id": building_id}
-                        },
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
                         },
                         {
                             "action": "block",
@@ -203,18 +195,26 @@ def kakao():
                 }
             })
 
-        # ─── 공실_현황 ───
-        if block_id == BLOCK_공실현황:
-            rows = get_sheet_data("공실 현황")
-            # 헤더 제거 전 원본 확인
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"simpleText": {"text": 
-                        "\n".join([str(r[:3]) for r in rows[:12]])
-                    }}]
+                    "outputs": outputs,
+                    "quickReplies": [
+                        {
+                            "action": "block",
+                            "label": "🔙 빌딩 목록으로",
+                            "blockId": BLOCK_빌딩목록
+                        }
+                    ]
                 }
             })
+
+        # ─── 공실_현황 ───
+        if block_id == BLOCK_공실현황:
+            rows = get_sheet_data("공실 현황")
+            rows = rows[1:]
+            filtered = [r for r in rows if r[0] == building_id]
+
             if not filtered:
                 return jsonify({
                     "version": "2.0",
@@ -230,8 +230,8 @@ def kakao():
                     }
                 })
 
-            # 공실없음 체크
-            if any("공실없음" in r[1] for r in filtered):
+            # 공실없음 체크 — 층 컬럼이 비어있으면
+            if filtered[0][1] == "":
                 return jsonify({
                     "version": "2.0",
                     "template": {
