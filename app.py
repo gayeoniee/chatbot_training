@@ -40,7 +40,6 @@ def kakao():
         body = request.get_json()
         block_id = body["userRequest"]["block"]["id"]
         client_extra = body["action"].get("clientExtra", {}) or {}
-        mode = client_extra.get("mode", "")
         building_id = get_building_id(body, client_extra)
 
         # ─── 빌딩_목록 ───
@@ -223,8 +222,6 @@ def kakao():
                         "thumbnail": {"imageUrl": plan_url}
                     })
 
-            photo_items = photo_items[:10]
-
             if not photo_items:
                 return jsonify({
                     "version": "2.0",
@@ -240,6 +237,27 @@ def kakao():
                     }
                 })
 
+            # 마지막에 네비게이션 카드 추가
+            photo_items.append({
+                "title": "📋 다음 단계",
+                "description": "원하시는 메뉴를 선택해주세요.",
+                "buttons": [
+                    {
+                        "action": "block",
+                        "label": "📊 공실 현황",
+                        "blockId": BLOCK_공실현황,
+                        "extra": {"building_id": building_id}
+                    },
+                    {
+                        "action": "block",
+                        "label": "📞 상담 연결",
+                        "blockId": BLOCK_상담연결
+                    }
+                ]
+            })
+
+            photo_items = photo_items[:10]
+
             return jsonify({
                 "version": "2.0",
                 "template": {
@@ -247,19 +265,8 @@ def kakao():
                     "quickReplies": [
                         {
                             "action": "block",
-                            "label": "📊 공실 현황",
-                            "blockId": BLOCK_공실현황,
-                            "extra": {"building_id": building_id}
-                        },
-                        {
-                            "action": "block",
                             "label": "🔙 빌딩 목록으로",
                             "blockId": BLOCK_빌딩목록
-                        },
-                        {
-                            "action": "block",
-                            "label": "📞 상담 연결",
-                            "blockId": BLOCK_상담연결
                         }
                     ]
                 }
@@ -277,6 +284,32 @@ def kakao():
                     "template": {
                         "outputs": [{"simpleText": {"text": "현재 공실 정보가 없습니다."}}],
                         "quickReplies": [
+                            {
+                                "action": "block",
+                                "label": "🔙 빌딩 목록으로",
+                                "blockId": BLOCK_빌딩목록
+                            }
+                        ]
+                    }
+                })
+
+            # 공실없음 체크
+            if filtered[0][1] == "공실없음":
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": (
+                            "🏢 현재 해당 건물은 공실이 없습니다.\n\n"
+                            "임대 문의는 상담 연결을 이용해주세요.\n"
+                            "─────────────────\n"
+                            "💬 '종료'를 입력하면 챗봇을 종료합니다."
+                        )}}],
+                        "quickReplies": [
+                            {
+                                "action": "block",
+                                "label": "📞 상담 연결",
+                                "blockId": BLOCK_상담연결
+                            },
                             {
                                 "action": "block",
                                 "label": "🔙 빌딩 목록으로",
