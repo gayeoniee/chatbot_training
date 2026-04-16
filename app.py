@@ -170,15 +170,10 @@ def kakao():
                     })
             photo_items = photo_items[:10]
 
-            # outputs: 텍스트 + 사진 캐러셀(있을 때) + 버튼 카드
-            outputs = [{"simpleText": {"text": detail_text}}]
-            if photo_items:
-                outputs.append({"carousel": {"type": "basicCard", "items": photo_items}})
-
-            # 버튼 카드 (building_id extra 전달용)
-            outputs.append({
+            # 첫 번째: 텍스트 + 버튼 카드
+            outputs = [{
                 "basicCard": {
-                    "title": "🔍 추가 정보",
+                    "description": detail_text,
                     "buttons": [
                         {
                             "action": "block",
@@ -193,7 +188,13 @@ def kakao():
                         }
                     ]
                 }
-            })
+            }]
+
+            # 두 번째: 사진 캐러셀 (있을 때만)
+            if photo_items:
+                outputs.append({
+                    "carousel": {"type": "basicCard", "items": photo_items}
+                })
 
             return jsonify({
                 "version": "2.0",
@@ -230,7 +231,7 @@ def kakao():
                     }
                 })
 
-            # 공실없음 체크 — 층 컬럼이 비어있으면
+            # 공실없음 체크
             if filtered[0][1] == "":
                 return jsonify({
                     "version": "2.0",
