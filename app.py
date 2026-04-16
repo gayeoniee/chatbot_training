@@ -116,7 +116,7 @@ def kakao():
 
             return jsonify(response)
 
-        # ─── 상세보기 (텍스트 + 사진 캐러셀) ───
+        # ─── 상세보기 ───
         if block_id == BLOCK_상세보기:
             rows = get_sheet_data("건물 마스터")
             rows = rows[1:]
@@ -152,57 +152,52 @@ def kakao():
                 f"💬 '종료'를 입력하면 챗봇을 종료합니다."
             )
 
-            # 첫 번째 카드: 상세 텍스트 + 버튼
-            detail_items = [{
-                "title": row[1],
-                "description": detail_text,
-                "thumbnail": {
-                    "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
-                },
-                "buttons": [
-                    {
-                        "action": "block",
-                        "label": "📊 공실 현황",
-                        "blockId": BLOCK_공실현황,
-                        "extra": {"building_id": building_id}
-                    },
-                    {
-                        "action": "block",
-                        "label": "📞 상담 연결",
-                        "blockId": BLOCK_상담연결
-                    }
-                ]
-            }]
+            # 사진 캐러셀 구성
+            photo_items = []
 
-            # 세부사진 카드들 (row[19])
             if row[19]:
                 photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
                 for i, photo_url in enumerate(photo_urls[:5]):
-                    detail_items.append({
+                    photo_items.append({
                         "title": f"📸 세부사진 {i+1}",
                         "thumbnail": {"imageUrl": photo_url}
                     })
 
-            # 도면 카드들 (row[20])
             if row[20]:
                 plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                 for i, plan_url in enumerate(plan_urls[:3]):
-                    detail_items.append({
+                    photo_items.append({
                         "title": f"📐 도면",
                         "thumbnail": {"imageUrl": plan_url}
                     })
 
-            detail_items = detail_items[:10]
+            photo_items = photo_items[:10]
+
+            # outputs 구성: 텍스트 먼저, 사진 있으면 캐러셀 추가
+            outputs = [{"simpleText": {"text": detail_text}}]
+            if photo_items:
+                outputs.append({"carousel": {"type": "basicCard", "items": photo_items}})
 
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"carousel": {"type": "basicCard", "items": detail_items}}],
+                    "outputs": outputs,
                     "quickReplies": [
+                        {
+                            "action": "block",
+                            "label": "📊 공실 현황",
+                            "blockId": BLOCK_공실현황,
+                            "extra": {"building_id": building_id}
+                        },
                         {
                             "action": "block",
                             "label": "🔙 빌딩 목록으로",
                             "blockId": BLOCK_빌딩목록
+                        },
+                        {
+                            "action": "block",
+                            "label": "📞 상담 연결",
+                            "blockId": BLOCK_상담연결
                         }
                     ]
                 }
@@ -230,7 +225,7 @@ def kakao():
                 })
 
             # 공실없음 체크
-            if "공실없음" in filtered[0][1]:
+            if any("공실없음" in r[1] for r in filtered):
                 return jsonify({
                     "version": "2.0",
                     "template": {
