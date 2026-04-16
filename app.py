@@ -72,10 +72,10 @@ def kakao():
                         f"─────────────────\n"
                         f"📍 주소: {row[2]}\n"
                         f"🗓 준공: {row[3]}\n"
-                        f" 규모: {row[4]}\n"
-                        f" 연면적: {row[5]}\n"
-                        f" 임대면적: {row[6]}\n"
-                        f" 전용률: {row[8]}\n"
+                        f"🏗 규모: {row[4]}\n"
+                        f"📐 연면적: {row[5]}\n"
+                        f"📏 임대면적: {row[6]}\n"
+                        f"💯 전용률: {row[8]}\n"
                         f"🚗 주차: {row[10]}\n"
                         f"❄️ 냉난방: {row[16]}\n"
                         f"─────────────────\n"
@@ -186,135 +186,35 @@ def kakao():
 
             return jsonify(response)
 
-        # ─── 사진_보기 ───
+        # ─── 사진_보기 (디버그) ───
         if block_id == BLOCK_사진보기:
-            rows = get_sheet_data("건물 마스터")
-            rows = rows[1:]
-            row = next((r for r in rows if r[0] == building_id), None)
-
-            if not row:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": "사진 정보를 찾을 수 없습니다."}}],
-                        "quickReplies": [
-                            {
-                                "action": "block",
-                                "label": "🔙 빌딩 목록으로",
-                                "blockId": BLOCK_빌딩목록
-                            }
-                        ]
-                    }
-                })
-
-            photo_items = []
-
-            if row[19]:
-                photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
-                for i, photo_url in enumerate(photo_urls[:5]):
-                    photo_items.append({
-                        "title": f"📸 세부사진 {i+1}",
-                        "thumbnail": {"imageUrl": photo_url}
-                    })
-
-            if row[20]:
-                plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
-                for i, plan_url in enumerate(plan_urls[:3]):
-                    photo_items.append({
-                        "title": f"📐 도면 {i+1}",
-                        "thumbnail": {"imageUrl": plan_url}
-                    })
-
-            photo_items = photo_items[:10]
-
-            if not photo_items:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": "등록된 사진이 없습니다."}}],
-                        "quickReplies": [
-                            {
-                                "action": "block",
-                                "label": "🔙 빌딩 목록으로",
-                                "blockId": BLOCK_빌딩목록
-                            }
-                        ]
-                    }
-                })
-
+            # 디버그: building_id 확인
+            debug_text = (
+                f"[디버그] 사진보기\n"
+                f"building_id: '{building_id}'\n"
+                f"clientExtra: {str(client_extra)}\n"
+                f"contexts: {str(body.get('contexts', []))}"
+            )
             return jsonify({
                 "version": "2.0",
-                "context": make_building_context(building_id),
                 "template": {
-                    "outputs": [{"carousel": {"type": "basicCard", "items": photo_items}}],
-                    "quickReplies": [
-                        {
-                            "action": "block",
-                            "label": "📊 공실 현황",
-                            "blockId": BLOCK_공실현황
-                        },
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
-                        },
-                        {
-                            "action": "block",
-                            "label": "📞 상담 연결",
-                            "blockId": BLOCK_상담연결
-                        }
-                    ]
+                    "outputs": [{"simpleText": {"text": debug_text}}]
                 }
             })
 
-        # ─── 공실_현황 ───
+        # ─── 공실_현황 (디버그) ───
         if block_id == BLOCK_공실현황:
-            rows = get_sheet_data("공실 현황")
-            rows = rows[1:]
-            filtered = [r for r in rows if r[0] == building_id]
-
-            if not filtered:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": "현재 공실 정보가 없습니다."}}],
-                        "quickReplies": [
-                            {
-                                "action": "block",
-                                "label": "🔙 빌딩 목록으로",
-                                "blockId": BLOCK_빌딩목록
-                            }
-                        ]
-                    }
-                })
-
-            text = "🏢 공실 현황\n─────────────────\n"
-            for row in filtered:
-                text += f"📌 {row[1]}층\n"
-                text += f"   면적: {row[2]}평\n"
-                text += f"   보증금: {row[7]}원\n"
-                text += f"   임대료: {row[8]}원\n"
-                text += f"   관리비: {row[9]}원\n"
-                text += f"   입주가능: {row[10]}\n"
-                text += "─────────────────\n"
-            text += "💬 '종료'를 입력하면 챗봇을 종료합니다."
-
+            # 디버그: building_id 확인
+            debug_text = (
+                f"[디버그] 공실현황\n"
+                f"building_id: '{building_id}'\n"
+                f"clientExtra: {str(client_extra)}\n"
+                f"contexts: {str(body.get('contexts', []))}"
+            )
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"simpleText": {"text": text}}],
-                    "quickReplies": [
-                        {
-                            "action": "block",
-                            "label": "📝 상담 신청하기",
-                            "blockId": BLOCK_상담연결
-                        },
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
-                        }
-                    ]
+                    "outputs": [{"simpleText": {"text": debug_text}}]
                 }
             })
 
