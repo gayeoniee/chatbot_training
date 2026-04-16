@@ -127,7 +127,14 @@ def kakao():
                 return jsonify({
                     "version": "2.0",
                     "template": {
-                        "outputs": [{"simpleText": {"text": "건물 정보를 찾을 수 없습니다."}}]
+                        "outputs": [{"simpleText": {"text": "건물 정보를 찾을 수 없습니다."}}],
+                        "quickReplies": [
+                            {
+                                "action": "block",
+                                "label": "🔙 빌딩 목록으로",
+                                "blockId": BLOCK_빌딩목록
+                            }
+                        ]
                     }
                 })
 
@@ -218,7 +225,7 @@ def kakao():
                 plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                 for i, plan_url in enumerate(plan_urls[:3]):
                     photo_items.append({
-                        "title": f"📐 도면 {i+1}",
+                        "title": f"📐 도면",
                         "thumbnail": {"imageUrl": plan_url}
                     })
 
@@ -230,31 +237,18 @@ def kakao():
                         "quickReplies": [
                             {
                                 "action": "block",
+                                "label": "🔙 상세보기로",
+                                "blockId": BLOCK_상세보기,
+                                "extra": {"building_id": building_id}
+                            },
+                            {
+                                "action": "block",
                                 "label": "🔙 빌딩 목록으로",
                                 "blockId": BLOCK_빌딩목록
                             }
                         ]
                     }
                 })
-
-            # 마지막에 네비게이션 카드 추가
-            photo_items.append({
-                "title": "📋 다음 단계",
-                "description": "원하시는 메뉴를 선택해주세요.",
-                "buttons": [
-                    {
-                        "action": "block",
-                        "label": "📊 공실 현황",
-                        "blockId": BLOCK_공실현황,
-                        "extra": {"building_id": building_id}
-                    },
-                    {
-                        "action": "block",
-                        "label": "📞 상담 연결",
-                        "blockId": BLOCK_상담연결
-                    }
-                ]
-            })
 
             photo_items = photo_items[:10]
 
@@ -263,6 +257,12 @@ def kakao():
                 "template": {
                     "outputs": [{"carousel": {"type": "basicCard", "items": photo_items}}],
                     "quickReplies": [
+                        {
+                            "action": "block",
+                            "label": "🔙 상세보기로",
+                            "blockId": BLOCK_상세보기,
+                            "extra": {"building_id": building_id}
+                        },
                         {
                             "action": "block",
                             "label": "🔙 빌딩 목록으로",
@@ -294,7 +294,7 @@ def kakao():
                 })
 
             # 공실없음 체크
-            if filtered[0][1] == "공실없음":
+            if filtered[0][1].strip() == "공실없음":
                 return jsonify({
                     "version": "2.0",
                     "template": {
