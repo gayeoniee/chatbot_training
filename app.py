@@ -7,11 +7,10 @@ import io
 app = Flask(__name__)
 
 SHEET_ID = "1VyaFjCajpbbBzyxS6OgCYpSV_XC5gNmSicm5NrmQqZQ"
-BLOCK_빌딩목록 = "69d9b082192d2e03bfe4827e"
-BLOCK_공실현황 = "69d9b16d23db64fe52493c17"
-BLOCK_상담연결 = "69d9d14423db64fe5249415f"
-BLOCK_연락처   = "69d9d1f8ce25e3303304750b"
-BLOCK_사진보기 = "69d9f82e23db64fe52494b00"
+BLOCK_빌딩목록 = "69e07bc89c9e621312f79868"
+BLOCK_공실현황 = "69e07c062f86b41b354c42ac"
+BLOCK_상담연결 = "69e07c60717504b55e562a65"
+BLOCK_사진보기 = "69e07c91717504b55e562a6b"
 
 def get_sheet_data(sheet_name):
     encoded_sheet = urllib.parse.quote(sheet_name)
@@ -22,11 +21,8 @@ def get_sheet_data(sheet_name):
         rows = list(reader)
         return rows
 
-
-
 @app.route("/", methods=["GET", "POST"])
 def kakao():
-    # GET 요청이면 그냥 200 응답
     if request.method == "GET":
         return "OK", 200
     try:
@@ -39,7 +35,6 @@ def kakao():
         # ─── 빌딩_목록 또는 상세보기 ───
         if block_id == BLOCK_빌딩목록:
 
-            # 상세보기 모드
             if mode == "detail" and building_id:
                 rows = get_sheet_data("건물 마스터")
                 rows = rows[1:]
@@ -51,10 +46,10 @@ def kakao():
                         f"─────────────────\n"
                         f"📍 주소: {row[2]}\n"
                         f"🗓 준공: {row[3]}\n"
-                        f"🏗 규모: {row[4]}\n"
-                        f"📐 연면적: {row[5]}\n"
-                        f"📏 임대면적: {row[6]}\n"
-                        f"💯 전용률: {row[8]}\n"
+                        f" 규모: {row[4]}\n"
+                        f" 연면적: {row[5]}\n"
+                        f" 임대면적: {row[6]}\n"
+                        f" 전용률: {row[8]}\n"
                         f"🚗 주차: {row[10]}\n"
                         f"❄️ 냉난방: {row[16]}\n"
                         f"─────────────────\n"
@@ -176,13 +171,19 @@ def kakao():
                 return jsonify({
                     "version": "2.0",
                     "template": {
-                        "outputs": [{"simpleText": {"text": "사진 정보를 찾을 수 없습니다."}}]
+                        "outputs": [{"simpleText": {"text": "사진 정보를 찾을 수 없습니다."}}],
+                        "quickReplies": [
+                            {
+                                "action": "block",
+                                "label": "🔙 빌딩 목록으로",
+                                "blockId": BLOCK_빌딩목록
+                            }
+                        ]
                     }
                 })
 
             photo_items = []
 
-            # 세부사진 (row[19])
             if row[19]:
                 photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
                 for i, photo_url in enumerate(photo_urls[:5]):
@@ -191,7 +192,6 @@ def kakao():
                         "thumbnail": {"imageUrl": photo_url}
                     })
 
-            # 도면 (row[20])
             if row[20]:
                 plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                 for i, plan_url in enumerate(plan_urls[:3]):
@@ -311,33 +311,10 @@ def kakao():
                     "quickReplies": [
                         {
                             "action": "block",
-                            "label": "📝 연락처 남기기",
-                            "blockId": BLOCK_연락처
-                        },
-                        {
-                            "action": "block",
                             "label": "🔙 빌딩 목록으로",
                             "blockId": BLOCK_빌딩목록
                         }
                     ]
-                }
-            })
-
-        # ─── 연락처_남기기 ───
-        if block_id == BLOCK_연락처:
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{"simpleText": {"text": (
-                        "📝 연락처 남기기\n"
-                        "─────────────────\n"
-                        "성함과 연락처를 아래 형식으로 입력해주세요.\n\n"
-                        "예시) 홍길동 / 010-1234-5678\n\n"
-                        "담당자가 영업시간 내 연락드리겠습니다.\n"
-                        "(평일 09:00 ~ 18:00)\n"
-                        "─────────────────\n"
-                        "💬 '종료'를 입력하면 챗봇을 종료합니다."
-                    )}}]
                 }
             })
 
