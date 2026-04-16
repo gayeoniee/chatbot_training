@@ -10,7 +10,6 @@ SHEET_ID = "1VyaFjCajpbbBzyxS6OgCYpSV_XC5gNmSicm5NrmQqZQ"
 BLOCK_빌딩목록 = "69e07bc89c9e621312f79868"
 BLOCK_공실현황 = "69e07c062f86b41b354c42ac"
 BLOCK_상담연결 = "69e07c60717504b55e562a65"
-BLOCK_사진보기 = "69e07c91717504b55e562a6b"
 BLOCK_상세보기 = "69e0b4374609e56adc714886"
 
 def get_sheet_data(sheet_name):
@@ -117,7 +116,7 @@ def kakao():
 
             return jsonify(response)
 
-        # ─── 상세보기 ───
+        # ─── 상세보기 (텍스트 + 사진 캐러셀) ───
         if block_id == BLOCK_상세보기:
             rows = get_sheet_data("건물 마스터")
             rows = rows[1:]
@@ -153,116 +152,53 @@ def kakao():
                 f"💬 '종료'를 입력하면 챗봇을 종료합니다."
             )
 
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "basicCard": {
-                            "description": detail_text,
-                            "buttons": [
-                                {
-                                    "action": "block",
-                                    "label": "📸 사진 보기",
-                                    "blockId": BLOCK_사진보기,
-                                    "extra": {"building_id": building_id}
-                                },
-                                {
-                                    "action": "block",
-                                    "label": "📊 공실 현황",
-                                    "blockId": BLOCK_공실현황,
-                                    "extra": {"building_id": building_id}
-                                }
-                            ]
-                        }
-                    }],
-                    "quickReplies": [
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
-                        },
-                        {
-                            "action": "block",
-                            "label": "📞 상담 연결",
-                            "blockId": BLOCK_상담연결
-                        }
-                    ]
-                }
-            })
-
-        # ─── 사진_보기 ───
-        if block_id == BLOCK_사진보기:
-            rows = get_sheet_data("건물 마스터")
-            rows = rows[1:]
-            row = next((r for r in rows if r[0] == building_id), None)
-
-            if not row:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": "사진 정보를 찾을 수 없습니다."}}],
-                        "quickReplies": [
-                            {
-                                "action": "block",
-                                "label": "🔙 빌딩 목록으로",
-                                "blockId": BLOCK_빌딩목록
-                            }
-                        ]
+            # 첫 번째 카드: 상세 텍스트 + 버튼
+            detail_items = [{
+                "title": row[1],
+                "description": detail_text,
+                "thumbnail": {
+                    "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
+                },
+                "buttons": [
+                    {
+                        "action": "block",
+                        "label": "📊 공실 현황",
+                        "blockId": BLOCK_공실현황,
+                        "extra": {"building_id": building_id}
+                    },
+                    {
+                        "action": "block",
+                        "label": "📞 상담 연결",
+                        "blockId": BLOCK_상담연결
                     }
-                })
+                ]
+            }]
 
-            photo_items = []
-
+            # 세부사진 카드들 (row[19])
             if row[19]:
                 photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
                 for i, photo_url in enumerate(photo_urls[:5]):
-                    photo_items.append({
+                    detail_items.append({
                         "title": f"📸 세부사진 {i+1}",
                         "thumbnail": {"imageUrl": photo_url}
                     })
 
+            # 도면 카드들 (row[20])
             if row[20]:
                 plan_urls = [u.strip() for u in row[20].split(",") if u.strip()]
                 for i, plan_url in enumerate(plan_urls[:3]):
-                    photo_items.append({
+                    detail_items.append({
                         "title": f"📐 도면",
                         "thumbnail": {"imageUrl": plan_url}
                     })
 
-            if not photo_items:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{"simpleText": {"text": "등록된 사진이 없습니다."}}],
-                        "quickReplies": [
-                            {
-                                "action": "block",
-                                "label": "🔙 상세보기로",
-                                "blockId": BLOCK_상세보기,
-                                "extra": {"building_id": building_id}
-                            },
-                            {
-                                "action": "block",
-                                "label": "🔙 빌딩 목록으로",
-                                "blockId": BLOCK_빌딩목록
-                            }
-                        ]
-                    }
-                })
-
-            photo_items = photo_items[:10]
+            detail_items = detail_items[:10]
 
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"carousel": {"type": "basicCard", "items": photo_items}}],
+                    "outputs": [{"carousel": {"type": "basicCard", "items": detail_items}}],
                     "quickReplies": [
-                        {
-                            "action": "block",
-                            "label": "🔙 상세보기로",
-                            "blockId": BLOCK_상세보기,
-                            "extra": {"building_id": building_id}
-                        },
                         {
                             "action": "block",
                             "label": "🔙 빌딩 목록으로",
@@ -294,7 +230,7 @@ def kakao():
                 })
 
             # 공실없음 체크
-            if filtered[0][1].strip() == "공실없음":
+            if "공실없음" in filtered[0][1]:
                 return jsonify({
                     "version": "2.0",
                     "template": {
