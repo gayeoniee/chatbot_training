@@ -21,6 +21,32 @@ def get_sheet_data(sheet_name):
         rows = list(reader)
         return rows
 
+def get_building_id(body, client_extra):
+    building_id = client_extra.get("building_id", "")
+    if building_id:
+        return building_id
+    contexts = body.get("contexts", [])
+    building_context = next((c for c in contexts if c["name"] == "building_context"), None)
+    if building_context:
+        building_id = building_context.get("params", {}).get("building_id", {}).get("value", "")
+    return building_id
+
+def make_building_context(building_id):
+    return {
+        "values": [
+            {
+                "name": "building_context",
+                "lifeSpan": 5,
+                "params": {
+                    "building_id": {
+                        "value": building_id,
+                        "resolvedValue": building_id
+                    }
+                }
+            }
+        ]
+    }
+
 @app.route("/", methods=["GET", "POST"])
 def kakao():
     if request.method == "GET":
@@ -30,7 +56,7 @@ def kakao():
         block_id = body["userRequest"]["block"]["id"]
         client_extra = body["action"].get("clientExtra", {}) or {}
         mode = client_extra.get("mode", "")
-        building_id = client_extra.get("building_id", "")
+        building_id = get_building_id(body, client_extra)
 
         # ─── 빌딩_목록 또는 상세보기 ───
         if block_id == BLOCK_빌딩목록:
@@ -58,20 +84,19 @@ def kakao():
 
                     return jsonify({
                         "version": "2.0",
+                        "context": make_building_context(building_id),
                         "template": {
                             "outputs": [{"simpleText": {"text": detail_text}}],
                             "quickReplies": [
                                 {
                                     "action": "block",
                                     "label": "📸 사진 보기",
-                                    "blockId": BLOCK_사진보기,
-                                    "extra": {"building_id": building_id}
+                                    "blockId": BLOCK_사진보기
                                 },
                                 {
                                     "action": "block",
                                     "label": "📊 공실 현황",
-                                    "blockId": BLOCK_공실현황,
-                                    "extra": {"building_id": building_id}
+                                    "blockId": BLOCK_공실현황
                                 },
                                 {
                                     "action": "block",
@@ -219,14 +244,14 @@ def kakao():
 
             return jsonify({
                 "version": "2.0",
+                "context": make_building_context(building_id),
                 "template": {
                     "outputs": [{"carousel": {"type": "basicCard", "items": photo_items}}],
                     "quickReplies": [
                         {
                             "action": "block",
                             "label": "📊 공실 현황",
-                            "blockId": BLOCK_공실현황,
-                            "extra": {"building_id": building_id}
+                            "blockId": BLOCK_공실현황
                         },
                         {
                             "action": "block",
@@ -284,31 +309,6 @@ def kakao():
                             "label": "📝 상담 신청하기",
                             "blockId": BLOCK_상담연결
                         },
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
-                        }
-                    ]
-                }
-            })
-
-        # ─── 상담_연결 ───
-        if block_id == BLOCK_상담연결:
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{"simpleText": {"text": (
-                        "📞 상담 연결\n"
-                        "─────────────────\n"
-                        "영업시간 (평일 09:00 ~ 18:00) 중에는\n"
-                        "상담원과 바로 연결됩니다.\n\n"
-                        "영업시간 외에는 연락처를 남겨주시면\n"
-                        "영업시간 내 연락드리겠습니다.\n"
-                        "─────────────────\n"
-                        "💬 '종료'를 입력하면 챗봇을 종료합니다."
-                    )}}],
-                    "quickReplies": [
                         {
                             "action": "block",
                             "label": "🔙 빌딩 목록으로",
