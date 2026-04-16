@@ -209,14 +209,15 @@ def kakao():
             rows = rows[1:]
             filtered = [r for r in rows if r[0] == building_id]
 
-            if filtered:
-                return jsonify({
+            return jsonify({
                     "version": "2.0",
                     "template": {
                         "outputs": [{"simpleText": {"text": 
-                            f"filtered[0][1] = '{filtered[0][1]}'\n"
-                            f"len = {len(filtered[0][1])}\n"
-                            f"repr = {repr(filtered[0][1])}"
+                            f"building_id: '{building_id}'\n"
+                            f"type: {type(building_id)}\n"
+                            f"rows[0][0]: '{rows[0][0]}'\n"
+                            f"rows[1][0]: '{rows[1][0]}'\n"
+                            f"rows[5][0]: '{rows[5][0]}'"
                         }}]
                     }
                 })
