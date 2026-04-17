@@ -11,6 +11,7 @@ BLOCK_빌딩목록 = "69e07bc89c9e621312f79868"
 BLOCK_공실현황 = "69e07c062f86b41b354c42ac"
 BLOCK_상담연결 = "69e07c60717504b55e562a65"
 BLOCK_상세보기 = "69e0b4374609e56adc714886"
+BLOCK_폴백 = None  # 폴백 블록은 block_id로 구분 안 하고 utterance로 처리
 
 def get_sheet_data(sheet_name):
     encoded_sheet = urllib.parse.quote(sheet_name)
@@ -31,6 +32,48 @@ def get_building_id(body, client_extra):
         building_id = building_context.get("params", {}).get("building_id", {}).get("value", "")
     return building_id
 
+def search_buildings(utterance, rows):
+    # 건물명 또는 주소에서 utterance 검색
+    return [r for r in rows if utterance in r[1] or utterance in r[2]]
+
+def make_building_cards(matched_rows):
+    items = []
+    for row in matched_rows[:10]:
+        if len(row) < 22:
+            continue
+        items.append({
+            "title": row[1],
+            "description": f"📍 {row[2]}\n🏗 {row[4]}\n🚗 주차 {row[10]}",
+            "thumbnail": {
+                "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
+            },
+            "buttons": [
+                {
+                    "action": "block",
+                    "label": "📋 상세보기",
+                    "blockId": BLOCK_상세보기,
+                    "extra": {"building_id": row[0]}
+                },
+                {
+                    "action": "block",
+                    "label": "📊 공실 현황",
+                    "blockId": BLOCK_공실현황,
+                    "extra": {"building_id": row[0]}
+                },
+                {
+                    "action": "webLink",
+                    "label": "📍 위치 확인",
+                    "webLinkUrl": row[21] if row[21] else "https://map.kakao.com"
+                },
+                {
+                    "action": "block",
+                    "label": "📞 상담 연결",
+                    "blockId": BLOCK_상담연결
+                }
+            ]
+        })
+    return items
+
 @app.route("/", methods=["GET", "POST"])
 def kakao():
     if request.method == "GET":
@@ -38,6 +81,7 @@ def kakao():
     try:
         body = request.get_json()
         block_id = body["userRequest"]["block"]["id"]
+        utterance = body["userRequest"]["utterance"]
         client_extra = body["action"].get("clientExtra", {}) or {}
         building_id = get_building_id(body, client_extra)
 
@@ -53,41 +97,7 @@ def kakao():
             total = len(rows)
             paged_rows = rows[start:end]
 
-            list_items = []
-            for row in paged_rows:
-                if len(row) < 22:
-                    continue
-                list_items.append({
-                    "title": row[1],
-                    "description": f"📍 {row[2]}\n🏗 {row[4]}\n🚗 주차 {row[10]}",
-                    "thumbnail": {
-                        "imageUrl": row[18] if row[18] else "https://t1.kakaocdn.net/openbuilder/sample/lj3JUcmrz9.jpg"
-                    },
-                    "buttons": [
-                        {
-                            "action": "block",
-                            "label": "📋 상세보기",
-                            "blockId": BLOCK_상세보기,
-                            "extra": {"building_id": row[0]}
-                        },
-                        {
-                            "action": "block",
-                            "label": "📊 공실 현황",
-                            "blockId": BLOCK_공실현황,
-                            "extra": {"building_id": row[0]}
-                        },
-                        {
-                            "action": "webLink",
-                            "label": "📍 위치 확인",
-                            "webLinkUrl": row[21] if row[21] else "https://map.kakao.com"
-                        },
-                        {
-                            "action": "block",
-                            "label": "📞 상담 연결",
-                            "blockId": BLOCK_상담연결
-                        }
-                    ]
-                })
+            list_items = make_building_cards(paged_rows)
 
             quick_replies = []
             if page > 1:
@@ -152,7 +162,6 @@ def kakao():
                 f"💬 '종료'를 입력하면 챗봇을 종료합니다."
             )
 
-            # 사진 캐러셀 구성
             photo_items = []
             if row[19]:
                 photo_urls = [u.strip() for u in row[19].split(",") if u.strip()]
@@ -170,7 +179,6 @@ def kakao():
                     })
             photo_items = photo_items[:10]
 
-            # 첫 번째: 텍스트 + 버튼 카드
             outputs = [{
                 "basicCard": {
                     "description": detail_text,
@@ -190,7 +198,6 @@ def kakao():
                 }
             }]
 
-            # 두 번째: 사진 캐러셀 (있을 때만)
             if photo_items:
                 outputs.append({
                     "carousel": {"type": "basicCard", "items": photo_items}
@@ -231,7 +238,6 @@ def kakao():
                     }
                 })
 
-            # 공실없음 체크
             if filtered[0][1] == "":
                 return jsonify({
                     "version": "2.0",
@@ -287,10 +293,44 @@ def kakao():
                 }
             })
 
+        # ─── 키워드 검색 (폴백) ───
+        # 위 블록 ID에 해당하지 않는 모든 요청 = 텍스트 입력
+        rows = get_sheet_data("건물 마스터")
+        rows = rows[1:]
+        matched = search_buildings(utterance, rows)
+
+        if matched:
+            items = make_building_cards(matched)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"carousel": {"type": "basicCard", "items": items}}],
+                    "quickReplies": [
+                        {
+                            "action": "block",
+                            "label": "🏢 전체 목록 보기",
+                            "blockId": BLOCK_빌딩목록
+                        }
+                    ]
+                }
+            })
+
+        # 검색 결과 없음
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{"simpleText": {"text": "받은 blockId: " + block_id}}]
+                "outputs": [{"simpleText": {"text": (
+                    f"'{utterance}'에 해당하는 건물을 찾지 못했습니다.\n\n"
+                    "다른 검색어를 입력하시거나\n"
+                    "전체 목록을 확인해주세요."
+                )}}],
+                "quickReplies": [
+                    {
+                        "action": "block",
+                        "label": "🏢 전체 목록 보기",
+                        "blockId": BLOCK_빌딩목록
+                    }
+                ]
             }
         })
 
