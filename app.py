@@ -3,6 +3,7 @@ import urllib.request
 import urllib.parse
 import csv
 import io
+import time
 
 app = Flask(__name__)
 
@@ -14,6 +15,10 @@ BLOCK_상세보기 = "69e0b4374609e56adc714886"
 BLOCK_메인메뉴 = "69e081dd9c9e621312f79a3b"
 BLOCK_건물카드 = "69e1cd74d2b391b64c5f990e"
 
+# 캐시 저장소
+cache = {}
+CACHE_TTL = 60  # 60초
+
 def get_sheet_data(sheet_name):
     encoded_sheet = urllib.parse.quote(sheet_name)
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
@@ -22,6 +27,14 @@ def get_sheet_data(sheet_name):
         reader = csv.reader(io.StringIO(content))
         rows = list(reader)
         return rows
+
+def get_sheet_data_cached(sheet_name):
+    now = time.time()
+    if sheet_name in cache and now - cache[sheet_name]["time"] < CACHE_TTL:
+        return cache[sheet_name]["data"]
+    data = get_sheet_data(sheet_name)
+    cache[sheet_name] = {"data": data, "time": now}
+    return data
 
 def get_building_id(body, client_extra):
     building_id = client_extra.get("building_id", "")
@@ -83,7 +96,7 @@ def kakao():
 
         # ─── 빌딩_목록 (listCard) ───
         if block_id == BLOCK_빌딩목록:
-            rows = get_sheet_data("건물 마스터")
+            rows = get_sheet_data_cached("건물 마스터")
             rows = rows[1:]
 
             page = int(client_extra.get("page", 1))
@@ -93,7 +106,6 @@ def kakao():
             total = len(rows)
             paged_rows = rows[start:end]
 
-            # listCard 항목 구성
             list_items = []
             for row in paged_rows:
                 if len(row) < 22:
@@ -106,7 +118,6 @@ def kakao():
                     "extra": {"building_id": row[0]}
                 })
 
-            # 페이지네이션 버튼
             buttons = []
             if page > 1:
                 buttons.append({
@@ -138,9 +149,9 @@ def kakao():
                 }
             })
 
-        # ─── 건물_카드 (listCard 항목 클릭 시) ───
+        # ─── 건물_카드 ───
         if block_id == BLOCK_건물카드:
-            rows = get_sheet_data("건물 마스터")
+            rows = get_sheet_data_cached("건물 마스터")
             rows = rows[1:]
             row = next((r for r in rows if r[0] == building_id), None)
 
@@ -175,7 +186,7 @@ def kakao():
 
         # ─── 상세보기 ───
         if block_id == BLOCK_상세보기:
-            rows = get_sheet_data("건물 마스터")
+            rows = get_sheet_data_cached("건물 마스터")
             rows = rows[1:]
             row = next((r for r in rows if r[0] == building_id), None)
 
@@ -250,18 +261,11 @@ def kakao():
                     "carousel": {"type": "basicCard", "items": photo_items}
                 })
 
-            if from_source == "search":
-                back_button = {
-                    "action": "block",
-                    "label": "🔙 처음으로",
-                    "blockId": BLOCK_메인메뉴
-                }
-            else:
-                back_button = {
-                    "action": "block",
-                    "label": "🏢 빌딩 목록 보기",
-                    "blockId": BLOCK_빌딩목록
-                }
+            back_button = {
+                "action": "block",
+                "label": "🔙 처음으로" if from_source == "search" else "🏢 빌딩 목록 보기",
+                "blockId": BLOCK_메인메뉴 if from_source == "search" else BLOCK_빌딩목록
+            }
 
             return jsonify({
                 "version": "2.0",
@@ -273,7 +277,7 @@ def kakao():
 
         # ─── 공실_현황 ───
         if block_id == BLOCK_공실현황:
-            rows = get_sheet_data("공실 현황")
+            rows = get_sheet_data_cached("공실 현황")
             rows = rows[1:]
             filtered = [r for r in rows if r[0] == building_id]
 
@@ -363,14 +367,14 @@ def kakao():
             })
 
         # ─── 키워드 검색 (폴백) ───
-        rows = get_sheet_data("건물 마스터")
+        rows = get_sheet_data_cached("건물 마스터")
         rows = rows[1:]
         matched = search_buildings(utterance, rows)
 
         if matched:
-            items = [make_building_card_item(r, from_source="search") for r in matched[:10]]
             carousel_items = []
-            for item in items:
+            for r in matched[:10]:
+                item = make_building_card_item(r, from_source="search")
                 carousel_items.append({
                     "title": item["title"],
                     "description": item["description"],
