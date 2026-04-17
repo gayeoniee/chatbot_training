@@ -11,7 +11,7 @@ BLOCK_빌딩목록 = "69e07bc89c9e621312f79868"
 BLOCK_공실현황 = "69e07c062f86b41b354c42ac"
 BLOCK_상담연결 = "69e07c60717504b55e562a65"
 BLOCK_상세보기 = "69e0b4374609e56adc714886"
-BLOCK_폴백 = None  # 폴백 블록은 block_id로 구분 안 하고 utterance로 처리
+BLOCK_메인메뉴 = "69e081dd9c9e621312f79a3b"
 
 def get_sheet_data(sheet_name):
     encoded_sheet = urllib.parse.quote(sheet_name)
@@ -33,12 +33,11 @@ def get_building_id(body, client_extra):
     return building_id
 
 def search_buildings(utterance, rows):
-    # 건물명 또는 주소에서 utterance 검색
     return [r for r in rows if utterance in r[1] or utterance in r[2]]
 
-def make_building_cards(matched_rows):
+def make_building_cards(rows, from_source="list"):
     items = []
-    for row in matched_rows[:10]:
+    for row in rows[:10]:
         if len(row) < 22:
             continue
         items.append({
@@ -52,7 +51,7 @@ def make_building_cards(matched_rows):
                     "action": "block",
                     "label": "📋 상세보기",
                     "blockId": BLOCK_상세보기,
-                    "extra": {"building_id": row[0]}
+                    "extra": {"building_id": row[0], "from": from_source}
                 },
                 {
                     "action": "block",
@@ -84,6 +83,7 @@ def kakao():
         utterance = body["userRequest"]["utterance"]
         client_extra = body["action"].get("clientExtra", {}) or {}
         building_id = get_building_id(body, client_extra)
+        from_source = client_extra.get("from", "list")
 
         # ─── 빌딩_목록 ───
         if block_id == BLOCK_빌딩목록:
@@ -97,7 +97,7 @@ def kakao():
             total = len(rows)
             paged_rows = rows[start:end]
 
-            list_items = make_building_cards(paged_rows)
+            list_items = make_building_cards(paged_rows, from_source="list")
 
             quick_replies = []
             if page > 1:
@@ -203,17 +203,25 @@ def kakao():
                     "carousel": {"type": "basicCard", "items": photo_items}
                 })
 
+            # 진입 경로에 따라 뒤로가기 버튼 분기
+            if from_source == "search":
+                back_button = {
+                    "action": "block",
+                    "label": "🔙 처음으로",
+                    "blockId": BLOCK_메인메뉴
+                }
+            else:
+                back_button = {
+                    "action": "block",
+                    "label": "🔙 빌딩 목록으로",
+                    "blockId": BLOCK_빌딩목록
+                }
+
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": outputs,
-                    "quickReplies": [
-                        {
-                            "action": "block",
-                            "label": "🔙 빌딩 목록으로",
-                            "blockId": BLOCK_빌딩목록
-                        }
-                    ]
+                    "quickReplies": [back_button]
                 }
             })
 
@@ -233,6 +241,11 @@ def kakao():
                                 "action": "block",
                                 "label": "🔙 빌딩 목록으로",
                                 "blockId": BLOCK_빌딩목록
+                            },
+                            {
+                                "action": "block",
+                                "label": "🏠 처음으로",
+                                "blockId": BLOCK_메인메뉴
                             }
                         ]
                     }
@@ -258,6 +271,11 @@ def kakao():
                                 "action": "block",
                                 "label": "🔙 빌딩 목록으로",
                                 "blockId": BLOCK_빌딩목록
+                            },
+                            {
+                                "action": "block",
+                                "label": "🏠 처음으로",
+                                "blockId": BLOCK_메인메뉴
                             }
                         ]
                     }
@@ -288,19 +306,23 @@ def kakao():
                             "action": "block",
                             "label": "🔙 빌딩 목록으로",
                             "blockId": BLOCK_빌딩목록
+                        },
+                        {
+                            "action": "block",
+                            "label": "🏠 처음으로",
+                            "blockId": BLOCK_메인메뉴
                         }
                     ]
                 }
             })
 
         # ─── 키워드 검색 (폴백) ───
-        # 위 블록 ID에 해당하지 않는 모든 요청 = 텍스트 입력
         rows = get_sheet_data("건물 마스터")
         rows = rows[1:]
         matched = search_buildings(utterance, rows)
 
         if matched:
-            items = make_building_cards(matched)
+            items = make_building_cards(matched, from_source="search")
             return jsonify({
                 "version": "2.0",
                 "template": {
@@ -310,12 +332,16 @@ def kakao():
                             "action": "block",
                             "label": "🏢 전체 목록 보기",
                             "blockId": BLOCK_빌딩목록
+                        },
+                        {
+                            "action": "block",
+                            "label": "🏠 처음으로",
+                            "blockId": BLOCK_메인메뉴
                         }
                     ]
                 }
             })
 
-        # 검색 결과 없음
         return jsonify({
             "version": "2.0",
             "template": {
@@ -329,6 +355,11 @@ def kakao():
                         "action": "block",
                         "label": "🏢 전체 목록 보기",
                         "blockId": BLOCK_빌딩목록
+                    },
+                    {
+                        "action": "block",
+                        "label": "🏠 처음으로",
+                        "blockId": BLOCK_메인메뉴
                     }
                 ]
             }
