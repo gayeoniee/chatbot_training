@@ -140,7 +140,7 @@ def kakao():
                         "quickReplies": [
                             {
                                 "action": "block",
-                                "label": "🔙 빌딩 목록으로",
+                                "label": "🔙 빌딩 목록 보기",
                                 "blockId": BLOCK_빌딩목록
                             }
                         ]
@@ -213,7 +213,7 @@ def kakao():
             else:
                 back_button = {
                     "action": "block",
-                    "label": "🔙 빌딩 목록으로",
+                    "label": "🔙 빌딩 목록 보기",
                     "blockId": BLOCK_빌딩목록
                 }
 
@@ -239,7 +239,7 @@ def kakao():
                         "quickReplies": [
                             {
                                 "action": "block",
-                                "label": "🔙 빌딩 목록으로",
+                                "label": "🔙 빌딩 목록 보기",
                                 "blockId": BLOCK_빌딩목록
                             },
                             {
@@ -269,7 +269,7 @@ def kakao():
                             },
                             {
                                 "action": "block",
-                                "label": "🔙 빌딩 목록으로",
+                                "label": "🔙 빌딩 목록 보기",
                                 "blockId": BLOCK_빌딩목록
                             },
                             {
@@ -304,7 +304,7 @@ def kakao():
                         },
                         {
                             "action": "block",
-                            "label": "🔙 빌딩 목록으로",
+                            "label": "🔙 빌딩 목록 보기",
                             "blockId": BLOCK_빌딩목록
                         },
                         {
